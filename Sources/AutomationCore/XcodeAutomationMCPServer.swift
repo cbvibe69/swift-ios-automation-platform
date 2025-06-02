@@ -101,7 +101,14 @@ public final class XcodeAutomationMCPServer {
         
         while isRunning {
             // Read a line from stdin
-            guard let line = readLine(strippingNewline: true), !line.isEmpty else {
+            guard let line = readLine(strippingNewline: true) else {
+                // EOF received, exit gracefully
+                logger.debug("EOF received, stopping message loop")
+                break
+            }
+            
+            // Skip empty lines
+            if line.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                 continue
             }
             
@@ -114,6 +121,7 @@ public final class XcodeAutomationMCPServer {
         do {
             // Parse JSON-RPC request
             guard let data = line.data(using: .utf8) else {
+                logger.warning("Invalid UTF-8 in message: \(line)")
                 await sendErrorResponse(id: nil, error: MCPError.parseError)
                 return
             }
@@ -121,25 +129,31 @@ public final class XcodeAutomationMCPServer {
             let decoder = JSONDecoder()
             let request = try decoder.decode(MCPRequest.self, from: data)
             
+            logger.debug("Processing request: \(request.method) with id: \(request.id)")
+            
             // Process request through protocol handler
             let response = await protocolHandler.processRequest(request)
             
             // Send response back via stdout
             await sendResponse(response)
             
+        } catch let decodingError as DecodingError {
+            logger.error("JSON decode error: \(decodingError)")
+            await sendErrorResponse(id: nil, error: MCPError.parseError)
         } catch {
             logger.error("Failed to process message: \(error)")
-            await sendErrorResponse(id: nil, error: MCPError.parseError)
+            await sendErrorResponse(id: nil, error: MCPError.internalError)
         }
     }
     
     private func sendResponse(_ response: MCPResponse) async {
         do {
             let encoder = JSONEncoder()
+            encoder.outputFormatting = [] // Compact JSON without extra formatting
             let data = try encoder.encode(response)
             if let jsonString = String(data: data, encoding: .utf8) {
                 print(jsonString)
-                fflush(stdout)
+                FileHandle.standardOutput.synchronizeFile() // Swift's proper stdout flushing
             }
         } catch {
             logger.error("Failed to encode response: \(error)")
