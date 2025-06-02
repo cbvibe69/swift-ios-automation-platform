@@ -1,4 +1,5 @@
 import XCTest
+import Logging
 @testable import AutomationCore
 
 final class XcodeAutomationServerTests: XCTestCase {
