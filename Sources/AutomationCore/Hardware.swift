@@ -1,10 +1,8 @@
 import Foundation
-
 /// Functions for detecting hardware capabilities and calculating simulator counts
 public func detectHardwareCapabilities() async throws -> HardwareSpec {
-    let processInfo = ProcessInfo.processInfo
-    let physicalMemory = processInfo.physicalMemory
-    let processorCount = processInfo.processorCount
+    let physicalMemory = HardwareDetection.memorySize()
+    let processorCount = HardwareDetection.cpuCoreCount()
 
     let isAppleSilicon = await detectAppleSilicon()
     let isM2Max = await detectM2MaxSpecifically()
@@ -23,20 +21,12 @@ public func detectHardwareCapabilities() async throws -> HardwareSpec {
 
 /// Determine whether the current machine is running on Apple Silicon.
 public func detectAppleSilicon() async -> Bool {
-    #if arch(arm64)
-    return true
-    #else
-    return false
-    #endif
+    HardwareDetection.isAppleSilicon()
 }
 
 /// Rough heuristic to detect M2 Max-class machines.
 public func detectM2MaxSpecifically() async -> Bool {
-    let processInfo = ProcessInfo.processInfo
-    let memoryGB = Int(processInfo.physicalMemory / (1024 * 1024 * 1024))
-    let cores = processInfo.processorCount
-
-    return await detectAppleSilicon() && memoryGB >= 32 && cores >= 10
+    HardwareDetection.isMacStudioM2Max()
 }
 
 /// Calculate an optimal simulator count based on available memory and cores.
