@@ -292,6 +292,7 @@ Use the feature request template and include:
 - [Architecture Overview](Documentation/ARCHITECTURE.md) - System design
 - [Performance Targets](Documentation/PERFORMANCE.md) - Benchmarks
 - [Security Model](Documentation/SECURITY.md) - App Sandbox guide
+- [API Reference](Documentation/API.md) - MCP tool documentation
 
 ### External References
 - [Model Context Protocol](https://github.com/modelcontextprotocol) - Official MCP spec
