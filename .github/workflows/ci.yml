@@ -13,7 +13,7 @@ jobs:
     strategy:
       matrix:
         os: [macos-14, macos-13]
-        swift: ["5.9", "5.10"]
+        swift: ["6.0"]
     
     steps:
     - uses: actions/checkout@v4
@@ -68,7 +68,7 @@ jobs:
     - name: Setup Swift
       uses: swift-actions/setup-swift@v1
       with:
-        swift-version: "5.9"
+        swift-version: "6.0"
     
     - name: Cache Dependencies
       uses: actions/cache@v3
@@ -102,7 +102,7 @@ jobs:
     - name: Setup Swift
       uses: swift-actions/setup-swift@v1
       with:
-        swift-version: "5.9"
+        swift-version: "6.0"
     
     - name: Check for Security Issues
       run: |
@@ -130,7 +130,7 @@ jobs:
     - name: Setup Swift
       uses: swift-actions/setup-swift@v1
       with:
-        swift-version: "5.9"
+        swift-version: "6.0"
     
     - name: Generate Documentation
       run: |
@@ -161,7 +161,7 @@ jobs:
     - name: Setup Swift
       uses: swift-actions/setup-swift@v1
       with:
-        swift-version: "5.9"
+        swift-version: "6.0"
     
     - name: Build Release Binary
       run: |
