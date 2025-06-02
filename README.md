@@ -1,6 +1,6 @@
 # Swift iOS Development Automation Platform
 
-[![Swift](https://img.shields.io/badge/Swift-5.9+-orange.svg)](https://swift.org)
+[![Swift](https://img.shields.io/badge/Swift-6.0+-orange.svg)](https://swift.org)
 [![Platform](https://img.shields.io/badge/Platform-macOS%2014+-blue.svg)](https://developer.apple.com/macos/)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Build Status](https://img.shields.io/badge/Build-Passing-brightgreen.svg)](#)
@@ -82,8 +82,8 @@ Transform your iOS development workflow through real-time build intelligence, ad
 ### Prerequisites
 ```bash
 # Verify your setup
-xcodebuild -version  # Should be 15.0+
-swift --version      # Should be 5.9+
+xcodebuild -version  # Should be 16.5+
+swift --version      # Should be 6.0+
 system_profiler SPHardwareDataType | grep -E "Total Number of Cores|Memory"
 ```
 

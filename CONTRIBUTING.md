@@ -26,8 +26,8 @@ We're currently in **Phase 1: Foundation + Core Extraction** (Weeks 1-2)
 ### Prerequisites
 - **Mac Studio M2 Max** (recommended) or Apple Silicon Mac (16GB+ RAM, 8+ cores)
 - **macOS 14+** (Sonoma or later)
-- **Xcode 15.0+** with Command Line Tools
-- **Swift 5.9+**
+- **Xcode 16.5+** with Command Line Tools
+- **Swift 6.0+**
 
 ### Setup Development Environment
 ```bash
@@ -102,7 +102,7 @@ Sources/
 ## 📝 Coding Standards
 
 ### Swift Style
-- **Swift 5.9+** features preferred
+- **Swift 6.0+** features preferred
 - **Structured concurrency** (async/await, TaskGroup)
 - **Actor isolation** for thread safety
 - **Sendable compliance** for all types
