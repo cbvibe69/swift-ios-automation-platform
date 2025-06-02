@@ -161,6 +161,7 @@ swift build
 ## 📄 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+For our security policy and vulnerability reporting guidelines, see [SECURITY.md](SECURITY.md).
 
 ## 🙏 Acknowledgments
 
