@@ -16,55 +16,69 @@ public actor ResourceManager {
     }
 
     /// Execute an operation while respecting resource limits.
-    public func executeWithResourceControl<T>(_ operation: () async throws -> T) async throws -> T {
+    public func executeWithResourceControl<T: Sendable>(_ operation: @Sendable () async throws -> T) async throws -> T {
         logger.debug("executeWithResourceControl invoked")
 
-        while true {
-            let usage = await monitor.snapshot()
-            let cpuPct = usage.cpuUsage * 100
-            let memPct = Double(usage.memoryUsedBytes) / Double(hardwareSpec.totalMemoryGB * 1024 * 1024 * 1024) * 100
+        let usage = await monitor.getCurrentUsage()
+        let concurrency = await calculateOptimalConcurrency(currentUsage: usage)
 
-            if cpuPct < Double(maxUtilization) && memPct < Double(maxUtilization) {
-                break
-            }
-
-            logger.debug("Resources busy - CPU: \(cpuPct)% MEM: \(memPct)%")
-            try await Task.sleep(for: .seconds(1))
+        guard concurrency > 0 else {
+            logger.warning("Resource exhaustion detected, waiting for resources to free up")
+            // In a real implementation, we'd wait or queue the operation
+            throw MCPError.resourceExhausted("System resources are currently exhausted")
         }
 
         return try await operation()
     }
 
-    /// Determine optimal simulator count given requested devices and optional limit.
-    public func calculateOptimalSimulatorCount(requestedDevices: [SimulatorDevice], maxConcurrent: Int?) async throws -> Int {
-        logger.debug("calculateOptimalSimulatorCount invoked")
+    private func calculateOptimalConcurrency(currentUsage: ResourceUsage) async -> Int {
+        var optimal = hardwareSpec.cpuCores
 
-        let usage = await monitor.snapshot()
-        var optimal = hardwareSpec.recommendedSimulators
-
-        let cpuHeadroom = Int(Double(hardwareSpec.cpuCores) * (1 - usage.cpuUsage))
-        let memHeadroom = Int((Double(hardwareSpec.totalMemoryGB) * 1024 * 1024 * 1024 - Double(usage.memoryUsedBytes)) / Double(2 * 1024 * 1024 * 1024))
+        let cpuHeadroom = Int(Double(hardwareSpec.cpuCores) * (1 - currentUsage.cpuUsage))
+        
+        // Break up the complex memory calculation
+        let totalMemoryBytes = Double(hardwareSpec.totalMemoryGB) * 1024 * 1024 * 1024
+        let availableMemoryBytes = totalMemoryBytes - Double(currentUsage.memoryUsedBytes)
+        let memoryPerProcess = Double(2 * 1024 * 1024 * 1024) // 2GB per process
+        let memHeadroom = Int(availableMemoryBytes / memoryPerProcess)
 
         optimal = min(optimal, cpuHeadroom, memHeadroom)
 
-        if hardwareSpec.isM2Max {
-            optimal += 2
-        }
-
-        if let maxConcurrent = maxConcurrent {
-            optimal = min(optimal, maxConcurrent)
-        }
-
-        optimal = max(optimal, requestedDevices.count)
-        optimal = min(max(optimal, 1), 12)
-
-        return optimal
+        return max(1, optimal)
     }
 
-    /// Placeholder for resource optimization loop called by the server.
+    /// Determine optimal simulator count given requested devices and optional limit.
+    public func calculateOptimalSimulatorCount(requestedDevices: Int, limit: Int? = nil) async -> Int {
+        let usage = await monitor.getCurrentUsage()
+        var optimal = AutomationCore.calculateOptimalSimulatorCount(hardwareSpec: hardwareSpec, reservedMemoryGB: 4)
+
+        // Apply CPU and memory constraints
+        let cpuHeadroom = Int(Double(hardwareSpec.cpuCores) * (1 - usage.cpuUsage))
+        let totalMemoryBytes = Double(hardwareSpec.totalMemoryGB) * 1024 * 1024 * 1024
+        let availableMemoryBytes = totalMemoryBytes - Double(usage.memoryUsedBytes)
+        let memoryPerSimulator = Double(2 * 1024 * 1024 * 1024) // 2GB per simulator
+        let memHeadroom = Int(availableMemoryBytes / memoryPerSimulator)
+
+        optimal = min(optimal, cpuHeadroom, memHeadroom)
+
+        // Apply Apple Silicon optimizations
+        if hardwareSpec.architecture == "arm64" {
+            optimal += 2 // Apple Silicon can handle more simulators
+        }
+
+        // Apply requested constraints
+        optimal = min(optimal, requestedDevices)
+        if let limit = limit {
+            optimal = min(optimal, limit)
+        }
+
+        return max(1, optimal)
+    }
+
+    /// Placeholder for resource optimization functionality.
     public func optimizeResourceAllocation() async {
         logger.debug("optimizeResourceAllocation invoked")
-        let usage = await monitor.snapshot()
+        let usage = await monitor.getCurrentUsage()
         logger.trace("CPU usage: \(usage.cpuUsage), mem used: \(usage.memoryUsedBytes)")
     }
 }

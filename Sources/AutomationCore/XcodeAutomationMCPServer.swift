@@ -5,417 +5,482 @@ import Subprocess
 import ConcurrencyExtras
 import SystemPackage
 
-/// Core MCP Server implementing hybrid architecture pattern extraction
-@MCPServer
-public final class XcodeAutomationMCPServer: Sendable {
+/// Core MCP Server for Xcode automation with modern Swift architecture
+public final class XcodeAutomationMCPServer {
     
     // MARK: - Core Components
-    private let configuration: ServerConfiguration
     private let logger: Logger
-    private let resourceManager: ResourceManager
-    private let securityManager: SecurityManager
-    private let patternExtractor: HybridPatternExtractor
-    private let buildIntelligence: BuildIntelligenceEngine
-    private let simulatorManager: AdvancedSimulatorManager
-    private let uiAutomation: NativeUIAutomationEngine
+    private let protocolHandler: MCPProtocolHandler
+    private let toolRegistry: MCPToolRegistry
+    private let xcodeBuildWrapper: XcodeBuildWrapper
+    private let configuration: ServerConfiguration
     
     // MARK: - State Management
-    private let serverState = ActorIsolated<ServerState>(.idle)
-    private let activeProjects = ActorIsolated<Set<XcodeProject>>([])
+    private var isRunning = false
+    private var activeProjects: Set<String> = []
     
     public init(configuration: ServerConfiguration) async throws {
         self.configuration = configuration
         self.logger = configuration.logger
         
-        logger.info("🏗️ Initializing Swift iOS Automation Platform with hybrid architecture")
+        logger.info("🏗️ Initializing Swift iOS Automation Platform")
         
-        // Initialize core managers
-        self.resourceManager = try await ResourceManager(
-            hardwareSpec: configuration.hardwareSpec,
-            maxUtilization: configuration.maxResourceUtilization,
-            logger: logger
-        )
+        // Initialize core components
+        self.toolRegistry = MCPToolRegistry(logger: logger)
+        self.protocolHandler = MCPProtocolHandler(logger: logger, toolRegistry: toolRegistry)
+        self.xcodeBuildWrapper = XcodeBuildWrapper(logger: logger)
         
-        self.securityManager = try SecurityManager(
-            maximumSecurity: configuration.maximumSecurity,
-            logger: logger
-        )
-        
-        // Initialize hybrid pattern extractor
-        self.patternExtractor = try await HybridPatternExtractor(
-            logger: logger,
-            securityManager: securityManager
-        )
-        
-        // Initialize intelligence engines
-        self.buildIntelligence = try await BuildIntelligenceEngine(
-            resourceManager: resourceManager,
-            logger: logger
-        )
-        
-        self.simulatorManager = try await AdvancedSimulatorManager(
-            hardwareSpec: configuration.hardwareSpec,
-            resourceManager: resourceManager,
-            logger: logger
-        )
-        
-        self.uiAutomation = try await NativeUIAutomationEngine(
-            simulatorManager: simulatorManager,
-            logger: logger
-        )
+        // Register all MCP tools
+        try await registerTools()
         
         logger.info("✅ MCP Server initialized successfully")
     }
     
-    // MARK: - Transport Methods
+    // MARK: - Server Lifecycle
     
+    /// Start the MCP server with stdio transport (recommended for security)
     public func startStdioTransport() async throws {
-        await serverState.withValue { $0 = .running(.stdio) }
-        logger.info("📡 Starting stdio transport (zero network exposure)")
+        logger.info("📡 Starting MCP server with stdio transport (zero network exposure)")
+        isRunning = true
         
-        // Initialize stdio MCP transport
-        let transport = StdioTransport()
-        try await runMCPLoop(transport: transport)
+        try await runStdioMessageLoop()
     }
     
-    public func startTCPTransport(port: Int) async throws {
-        await serverState.withValue { $0 = .running(.tcp(port)) }
-        logger.info("🌐 Starting TCP transport on localhost:\(port)")
+    /// Start the MCP server with TCP transport (localhost only)
+    public func startTCPTransport(port: Int = 8080) async throws {
+        logger.info("🌐 Starting MCP server with TCP transport on localhost:\(port)")
+        isRunning = true
         
-        // Initialize TCP MCP transport (localhost only)
-        let transport = TCPTransport(host: "127.0.0.1", port: port)
-        try await runMCPLoop(transport: transport)
+        // TCP implementation would go here
+        // For now, we'll focus on stdio transport as it's more secure
+        throw MCPError.internalError
     }
     
-    private func runMCPLoop(transport: any MCPTransport) async throws {
-        try await withThrowingTaskGroup(of: Void.self) { group in
-            // Main MCP message handling loop
-            group.addTask {
-                try await self.handleMCPMessages(transport: transport)
-            }
-            
-            // Background monitoring tasks
-            group.addTask {
-                await self.backgroundMonitoring()
-            }
-            
-            // Resource optimization loop
-            group.addTask {
-                await self.resourceOptimizationLoop()
-            }
-            
-            // Wait for any task to complete/fail
-            try await group.next()
-        }
+    /// Stop the MCP server gracefully
+    public func stop() async {
+        logger.info("🛑 Stopping MCP server")
+        isRunning = false
     }
     
-    // MARK: - MCP Tool Implementations (Hybrid Pattern Extraction)
+    // MARK: - Message Processing
     
-    /// Extract and enhance xcodemake patterns from XcodeBuildMCP
-    @MCPTool("Ultra-fast incremental builds using enhanced xcodemake algorithm")
-    func fastIncrementalBuild(
-        projectPath: String,
-        scheme: String,
-        destination: String = "platform=iOS Simulator,name=iPhone 15",
-        configuration: BuildConfiguration = .debug
-    ) async throws -> BuildResult {
+    private func runStdioMessageLoop() async throws {
+        logger.debug("Starting stdio message loop")
         
-        logger.info("🔨 Starting fast incremental build: \(scheme)")
-        let startTime = ContinuousClock.now
-        
-        // Security check
-        try securityManager.validateProjectPath(projectPath)
-        
-        // Pattern extraction: Enhanced xcodemake algorithm
-        let makefileResult = try await patternExtractor.generateEnhancedMakefile(
-            projectPath: projectPath,
-            scheme: scheme,
-            configuration: configuration
-        )
-        
-        // Execute build with resource monitoring
-        let buildResult = try await resourceManager.executeWithResourceControl {
-            try await self.executeMakeBuild(
-                makefile: makefileResult.makefilePath,
-                destination: destination
-            )
-        }
-        
-        let duration = startTime.duration(to: .now)
-        logger.info("✅ Build completed in \(duration.formatted())")
-        
-        // Real-time error analysis
-        if !buildResult.success {
-            let errorAnalysis = try await buildIntelligence.analyzeErrors(buildResult.errors)
-            return BuildResult(
-                success: false,
-                duration: duration,
-                errors: buildResult.errors,
-                errorAnalysis: errorAnalysis,
-                performance: buildResult.performance
-            )
-        }
-        
-        return BuildResult(
-            success: true,
-            duration: duration,
-            errors: [],
-            errorAnalysis: nil,
-            performance: buildResult.performance
-        )
-    }
-    
-    /// Extract and enhance project management patterns from r-huijts
-    @MCPTool("Advanced project creation with native Swift project manipulation")
-    func createProject(
-        template: ProjectTemplate,
-        name: String,
-        path: String,
-        options: ProjectOptions = ProjectOptions()
-    ) async throws -> ProjectCreationResult {
-        
-        logger.info("📁 Creating new project: \(name)")
-        
-        // Security validation
-        try securityManager.validateProjectCreationPath(path)
-        
-        // Pattern extraction: Enhanced project creation from r-huijts patterns
-        let projectResult = try await patternExtractor.createProjectWithEnhancements(
-            template: template,
-            name: name,
-            path: path,
-            options: options
-        )
-        
-        // Register project for monitoring
-        await activeProjects.withValue { projects in
-            projects.insert(projectResult.project)
-        }
-        
-        // Start real-time monitoring for the new project
-        Task {
-            await buildIntelligence.startMonitoring(project: projectResult.project)
-        }
-        
-        return projectResult
-    }
-    
-    /// Advanced multi-simulator management with resource optimization
-    @MCPTool("Launch and manage multiple simulators with intelligent resource allocation")
-    func launchSimulatorMatrix(
-        devices: [SimulatorDevice],
-        maxConcurrent: Int? = nil
-    ) async throws -> SimulatorLaunchResult {
-        
-        logger.info("📱 Launching simulator matrix with \(devices.count) devices")
-        
-        // Calculate optimal resource allocation
-        let optimalCount = try await resourceManager.calculateOptimalSimulatorCount(
-            requestedDevices: devices,
-            maxConcurrent: maxConcurrent
-        )
-        
-        logger.info("🎯 Optimal simulator count: \(optimalCount)")
-        
-        // Launch simulators with structured concurrency
-        return try await simulatorManager.launchSimulatorMatrix(
-            devices: Array(devices.prefix(optimalCount))
-        )
-    }
-    
-    /// Advanced UI automation with native Accessibility API
-    @MCPTool("Execute complex UI automation flows with native precision")
-    func executeUIAutomationFlow(
-        scenario: UITestScenario,
-        simulatorId: String? = nil
-    ) async throws -> UITestResult {
-        
-        logger.info("🤖 Executing UI automation: \(scenario.name)")
-        
-        // Get target simulator or use default
-        let targetSimulator = try await simulatorManager.getSimulator(
-            id: simulatorId ?? "booted"
-        )
-        
-        // Execute automation with native precision
-        return try await uiAutomation.executeScenario(
-            scenario,
-            on: targetSimulator
-        )
-    }
-    
-    /// Secure file operations with App Sandbox integration
-    @MCPTool("Secure file operations with user permission management")
-    func secureFileOperation(
-        operation: FileOperation,
-        paths: [String],
-        purpose: AccessPurpose
-    ) async throws -> FileOperationResult {
-        
-        logger.info("🔒 Secure file operation: \(operation.description)")
-        
-        // Request user permissions with clear purpose
-        let permissions = try await securityManager.requestFileAccess(
-            paths: paths,
-            purpose: purpose
-        )
-        
-        // Execute operation with security bookmarks
-        return try await executeFileOperation(
-            operation: operation,
-            permittedPaths: permissions.grantedPaths,
-            bookmarks: permissions.bookmarks
-        )
-    }
-    
-    // MARK: - Background Monitoring
-    
-    private func backgroundMonitoring() async {
-        logger.debug("🔍 Starting background monitoring")
-        
-        await withTaskGroup(of: Void.self) { group in
-            // Project monitoring
-            group.addTask {
-                await self.monitorActiveProjects()
-            }
-            
-            // Resource monitoring
-            group.addTask {
-                await self.monitorSystemResources()
-            }
-            
-            // Security monitoring
-            group.addTask {
-                await self.monitorSecurityEvents()
-            }
-        }
-    }
-    
-    private func resourceOptimizationLoop() async {
-        logger.debug("⚡ Starting resource optimization loop")
-        
-        while await serverState.value.isRunning {
-            try? await Task.sleep(for: .seconds(5))
-            await resourceManager.optimizeResourceAllocation()
-        }
-    }
-    
-    // MARK: - Private Implementation
-    
-    private func executeMakeBuild(
-        makefile: String,
-        destination: String
-    ) async throws -> RawBuildResult {
-        // Implementation of makefile-based build execution will use Swift
-        // Subprocess for optimal performance. For now this method throws so
-        // the server won't crash if it's called during early development.
-        throw MCPError.buildFailed("Makefile-based build execution not implemented")
-    }
-    
-    private func executeFileOperation(
-        operation: FileOperation,
-        permittedPaths: [String],
-        bookmarks: [SecurityBookmark]
-    ) async throws -> FileOperationResult {
-        // TODO: Secure file operations should integrate with the sandbox and
-        // manage security-scoped bookmarks. Throwing here prevents a crash
-        // until the implementation is provided.
-        throw MCPError.securityViolation("Secure file operation not implemented")
-    }
-    
-    private func handleMCPMessages(transport: any MCPTransport) async throws {
-        // Minimal MCP message loop implementation. Incoming requests are
-        // expected as JSON lines either via stdio or TCP transport. Each line
-        // represents a `SimpleBuildRequest` which is executed using
-        // `xcodebuild` and the result is returned as JSON.
-
-        let handler = SimpleMCPHandler(logger: logger)
-        let decoder = JSONDecoder()
-        let encoder = JSONEncoder()
-
-        while await serverState.value.isRunning {
+        while isRunning {
+            // Read a line from stdin
             guard let line = readLine(strippingNewline: true), !line.isEmpty else {
                 continue
             }
-
-            do {
-                let request = try decoder.decode(SimpleBuildRequest.self,
-                                                 from: Data(line.utf8))
-                let response = try await handler.handleBuildRequest(request)
-                let data = try encoder.encode(response)
-                FileHandle.standardOutput.write(data)
-                FileHandle.standardOutput.write(Data([0x0A]))
-            } catch {
-                logger.error("Failed to handle request: \(error.localizedDescription)")
-                let errorResponse = SimpleBuildResponse(success: false,
-                                                        stdout: "",
-                                                        stderr: error.localizedDescription)
-                if let data = try? encoder.encode(errorResponse) {
-                    FileHandle.standardOutput.write(data)
-                    FileHandle.standardOutput.write(Data([0x0A]))
-                }
-            }
+            
+            // Process the MCP request
+            await processMessageLine(line)
         }
     }
     
-    private func monitorActiveProjects() async {
-        // TODO: Monitor active projects for changes and trigger analysis. The
-        // functionality is not implemented yet.
-        logger.warning("monitorActiveProjects is unimplemented")
-        return
+    private func processMessageLine(_ line: String) async {
+        do {
+            // Parse JSON-RPC request
+            guard let data = line.data(using: .utf8) else {
+                await sendErrorResponse(id: nil, error: MCPError.parseError)
+                return
+            }
+            
+            let decoder = JSONDecoder()
+            let request = try decoder.decode(MCPRequest.self, from: data)
+            
+            // Process request through protocol handler
+            let response = await protocolHandler.processRequest(request)
+            
+            // Send response back via stdout
+            await sendResponse(response)
+            
+        } catch {
+            logger.error("Failed to process message: \(error)")
+            await sendErrorResponse(id: nil, error: MCPError.parseError)
+        }
     }
     
-    private func monitorSystemResources() async {
-        // TODO: Periodically gather system resource metrics. Currently a
-        // placeholder so the server does not crash when invoked.
-        logger.warning("monitorSystemResources is unimplemented")
-        return
+    private func sendResponse(_ response: MCPResponse) async {
+        do {
+            let encoder = JSONEncoder()
+            let data = try encoder.encode(response)
+            if let jsonString = String(data: data, encoding: .utf8) {
+                print(jsonString)
+                fflush(stdout)
+            }
+        } catch {
+            logger.error("Failed to encode response: \(error)")
+        }
     }
     
-    private func monitorSecurityEvents() async {
-        // TODO: Observe security related events and audit access. This is a
-        // stub to avoid crashes during early server runs.
-        logger.warning("monitorSecurityEvents is unimplemented")
-        return
+    private func sendErrorResponse(id: RequestID?, error: MCPError) async {
+        let response = MCPResponse(id: id, error: error)
+        await sendResponse(response)
+    }
+    
+    // MARK: - Tool Registration
+    
+    private func registerTools() async throws {
+        logger.info("🔧 Registering MCP tools")
+        
+        // Register Xcode build tool
+        let buildTool = RegisteredTool(
+            definition: MCPToolBuilder.buildTool(),
+            handler: { [weak self] arguments in
+                try await self?.handleBuildTool(arguments: arguments) ?? MCPToolResult.error("Server unavailable")
+            }
+        )
+        await toolRegistry.registerTool(buildTool)
+        
+        // Register simulator control tool
+        let simulatorTool = RegisteredTool(
+            definition: MCPToolBuilder.simulatorTool(),
+            handler: { [weak self] arguments in
+                try await self?.handleSimulatorTool(arguments: arguments) ?? MCPToolResult.error("Server unavailable")
+            }
+        )
+        await toolRegistry.registerTool(simulatorTool)
+        
+        // Register file operations tool
+        let fileTool = RegisteredTool(
+            definition: MCPToolBuilder.fileOperationTool(),
+            handler: { [weak self] arguments in
+                try await self?.handleFileOperationTool(arguments: arguments) ?? MCPToolResult.error("Server unavailable")
+            }
+        )
+        await toolRegistry.registerTool(fileTool)
+        
+        // Register project analysis tool
+        let analysisTool = RegisteredTool(
+            definition: MCPToolBuilder.projectAnalysisTool(),
+            handler: { [weak self] arguments in
+                try await self?.handleProjectAnalysisTool(arguments: arguments) ?? MCPToolResult.error("Server unavailable")
+            }
+        )
+        await toolRegistry.registerTool(analysisTool)
+        
+        // Register test execution tool
+        let testTool = RegisteredTool(
+            definition: MCPToolBuilder.testTool(),
+            handler: { [weak self] arguments in
+                try await self?.handleTestTool(arguments: arguments) ?? MCPToolResult.error("Server unavailable")
+            }
+        )
+        await toolRegistry.registerTool(testTool)
+        
+        // Register log monitoring tool
+        let logTool = RegisteredTool(
+            definition: MCPToolBuilder.logMonitorTool(),
+            handler: { [weak self] arguments in
+                try await self?.handleLogMonitorTool(arguments: arguments) ?? MCPToolResult.error("Server unavailable")
+            }
+        )
+        await toolRegistry.registerTool(logTool)
+        
+        logger.info("✅ All MCP tools registered successfully")
+    }
+    
+    // MARK: - Tool Handlers
+    
+    private func handleBuildTool(arguments: [String: AnyCodable]) async throws -> MCPToolResult {
+        guard let projectPathValue = arguments["projectPath"],
+              let projectPath = projectPathValue.value as? String,
+              let schemeValue = arguments["scheme"],
+              let scheme = schemeValue.value as? String else {
+            throw MCPError.invalidParams
+        }
+        
+        let destination = (arguments["destination"]?.value as? String) ?? "platform=iOS Simulator,name=iPhone 15"
+        let configurationString = (arguments["configuration"]?.value as? String) ?? "Debug"
+        let configuration = BuildConfiguration(rawValue: configurationString) ?? .debug
+        
+        logger.info("🔨 Building project: \(projectPath) scheme: \(scheme)")
+        
+        do {
+            let result = try await xcodeBuildWrapper.buildProject(
+                at: projectPath,
+                scheme: scheme,
+                destination: destination,
+                configuration: configuration
+            )
+            
+            if result.success {
+                var message = "✅ Build succeeded in \(result.duration.formatted())"
+                if !result.warnings.isEmpty {
+                    message += "\n⚠️ Warnings: \(result.warnings.count)"
+                }
+                return MCPToolResult.text(message)
+            } else {
+                var message = "❌ Build failed in \(result.duration.formatted())"
+                if !result.errors.isEmpty {
+                    message += "\n🚨 Errors: \(result.errors.count)"
+                    for error in result.errors.prefix(3) {
+                        message += "\n  • \(error.message)"
+                    }
+                }
+                return MCPToolResult.error(message)
+            }
+        } catch {
+            logger.error("Build failed: \(error)")
+            return MCPToolResult.error("Build failed: \(error.localizedDescription)")
+        }
+    }
+    
+    private func handleSimulatorTool(arguments: [String: AnyCodable]) async throws -> MCPToolResult {
+        guard let actionValue = arguments["action"],
+              let action = actionValue.value as? String else {
+            throw MCPError.invalidParams
+        }
+        
+        switch action {
+        case "list":
+            return try await listSimulators()
+        case "boot":
+            guard let deviceIdValue = arguments["deviceId"],
+                  let deviceId = deviceIdValue.value as? String else {
+                throw MCPError.invalidParams
+            }
+            return try await bootSimulator(deviceId: deviceId)
+        case "screenshot":
+            let deviceId = (arguments["deviceId"]?.value as? String) ?? "booted"
+            return try await takeSimulatorScreenshot(deviceId: deviceId)
+        default:
+            throw MCPError.invalidParams
+        }
+    }
+    
+    private func handleFileOperationTool(arguments: [String: AnyCodable]) async throws -> MCPToolResult {
+        guard let operationValue = arguments["operation"],
+              let operation = operationValue.value as? String,
+              let pathValue = arguments["path"],
+              let path = pathValue.value as? String else {
+            throw MCPError.invalidParams
+        }
+        
+        switch operation {
+        case "read":
+            return try await readFile(at: path)
+        case "write":
+            guard let contentValue = arguments["content"],
+                  let content = contentValue.value as? String else {
+                throw MCPError.invalidParams
+            }
+            return try await writeFile(at: path, content: content)
+        case "list":
+            return try await listDirectory(at: path)
+        default:
+            throw MCPError.invalidParams
+        }
+    }
+    
+    private func handleProjectAnalysisTool(arguments: [String: AnyCodable]) async throws -> MCPToolResult {
+        guard let projectPathValue = arguments["projectPath"],
+              let projectPath = projectPathValue.value as? String,
+              let analysisValue = arguments["analysis"],
+              let analysis = analysisValue.value as? String else {
+            throw MCPError.invalidParams
+        }
+        
+        switch analysis {
+        case "schemes":
+            return try await analyzeProjectSchemes(at: projectPath)
+        case "structure":
+            return try await analyzeProjectStructure(at: projectPath)
+        default:
+            throw MCPError.invalidParams
+        }
+    }
+    
+    private func handleTestTool(arguments: [String: AnyCodable]) async throws -> MCPToolResult {
+        guard let projectPathValue = arguments["projectPath"],
+              let projectPath = projectPathValue.value as? String,
+              let schemeValue = arguments["scheme"],
+              let scheme = schemeValue.value as? String else {
+            throw MCPError.invalidParams
+        }
+        
+        let destination = (arguments["destination"]?.value as? String) ?? "platform=iOS Simulator,name=iPhone 15"
+        
+        logger.info("🧪 Running tests: \(projectPath) scheme: \(scheme)")
+        
+        do {
+            let result = try await xcodeBuildWrapper.runTests(
+                at: projectPath,
+                scheme: scheme,
+                destination: destination
+            )
+            
+            var message = result.success ? "✅ All tests passed" : "❌ Some tests failed"
+            message += " in \(result.duration.formatted())"
+            message += "\n📊 Results: \(result.passedCount) passed, \(result.failedCount) failed"
+            
+            if !result.testCases.isEmpty {
+                let failedTests = result.testCases.filter { $0.status == .failed }
+                if !failedTests.isEmpty {
+                    message += "\n\n🚨 Failed tests:"
+                    for test in failedTests.prefix(5) {
+                        message += "\n  • \(test.name)"
+                    }
+                }
+            }
+            
+            return MCPToolResult.text(message)
+        } catch {
+            logger.error("Test execution failed: \(error)")
+            return MCPToolResult.error("Test execution failed: \(error.localizedDescription)")
+        }
+    }
+    
+    private func handleLogMonitorTool(arguments: [String: AnyCodable]) async throws -> MCPToolResult {
+        guard let actionValue = arguments["action"],
+              let action = actionValue.value as? String else {
+            throw MCPError.invalidParams
+        }
+        
+        // For now, return a placeholder implementation
+        return MCPToolResult.text("Log monitoring not yet implemented for action: \(action)")
+    }
+    
+    // MARK: - Implementation Helpers
+    
+    private func listSimulators() async throws -> MCPToolResult {
+        let command = ["xcrun", "simctl", "list", "devices", "--json"]
+        let result = try await executeCommand(command)
+        
+        if result.exitCode == 0 {
+            return MCPToolResult.text("📱 Simulators:\n\(result.output)")
+        } else {
+            return MCPToolResult.error("Failed to list simulators: \(result.errorOutput)")
+        }
+    }
+    
+    private func bootSimulator(deviceId: String) async throws -> MCPToolResult {
+        let command = ["xcrun", "simctl", "boot", deviceId]
+        let result = try await executeCommand(command)
+        
+        if result.exitCode == 0 {
+            return MCPToolResult.text("✅ Simulator \(deviceId) booted successfully")
+        } else {
+            return MCPToolResult.error("Failed to boot simulator: \(result.errorOutput)")
+        }
+    }
+    
+    private func takeSimulatorScreenshot(deviceId: String) async throws -> MCPToolResult {
+        let tempDir = FileManager.default.temporaryDirectory
+        let screenshotPath = tempDir.appendingPathComponent("simulator_screenshot_\(Date().timeIntervalSince1970).png")
+        
+        let command = ["xcrun", "simctl", "io", deviceId, "screenshot", screenshotPath.path]
+        let result = try await executeCommand(command)
+        
+        if result.exitCode == 0 {
+            return MCPToolResult.text("📸 Screenshot saved to: \(screenshotPath.path)")
+        } else {
+            return MCPToolResult.error("Failed to take screenshot: \(result.errorOutput)")
+        }
+    }
+    
+    private func readFile(at path: String) async throws -> MCPToolResult {
+        do {
+            let content = try String(contentsOfFile: path, encoding: .utf8)
+            return MCPToolResult.text("📄 File content:\n\(content)")
+        } catch {
+            return MCPToolResult.error("Failed to read file: \(error.localizedDescription)")
+        }
+    }
+    
+    private func writeFile(at path: String, content: String) async throws -> MCPToolResult {
+        do {
+            try content.write(toFile: path, atomically: true, encoding: .utf8)
+            return MCPToolResult.text("✅ File written successfully to: \(path)")
+        } catch {
+            return MCPToolResult.error("Failed to write file: \(error.localizedDescription)")
+        }
+    }
+    
+    private func listDirectory(at path: String) async throws -> MCPToolResult {
+        do {
+            let contents = try FileManager.default.contentsOfDirectory(atPath: path)
+            let listing = contents.joined(separator: "\n")
+            return MCPToolResult.text("📁 Directory contents:\n\(listing)")
+        } catch {
+            return MCPToolResult.error("Failed to list directory: \(error.localizedDescription)")
+        }
+    }
+    
+    private func analyzeProjectSchemes(at projectPath: String) async throws -> MCPToolResult {
+        do {
+            let schemes = try await xcodeBuildWrapper.listSchemes(at: projectPath)
+            let schemeNames = schemes.map { $0.name }.joined(separator: "\n")
+            return MCPToolResult.text("📋 Available schemes:\n\(schemeNames)")
+        } catch {
+            return MCPToolResult.error("Failed to analyze schemes: \(error.localizedDescription)")
+        }
+    }
+    
+    private func analyzeProjectStructure(at projectPath: String) async throws -> MCPToolResult {
+        // Basic project structure analysis
+        let fileManager = FileManager.default
+        do {
+            let contents = try fileManager.contentsOfDirectory(atPath: projectPath)
+            let structure = contents.joined(separator: "\n")
+            return MCPToolResult.text("🏗️ Project structure:\n\(structure)")
+        } catch {
+            return MCPToolResult.error("Failed to analyze project structure: \(error.localizedDescription)")
+        }
+    }
+    
+    private func executeCommand(_ command: [String]) async throws -> ProcessResult {
+        return try await withCheckedThrowingContinuation { continuation in
+            let process = Process()
+            let outputPipe = Pipe()
+            let errorPipe = Pipe()
+            
+            process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
+            process.arguments = command
+            process.standardOutput = outputPipe
+            process.standardError = errorPipe
+            
+            process.terminationHandler = { process in
+                // Read all data synchronously after process terminates
+                let outputData = outputPipe.fileHandleForReading.readDataToEndOfFile()
+                let errorData = errorPipe.fileHandleForReading.readDataToEndOfFile()
+                
+                let output = String(data: outputData, encoding: .utf8) ?? ""
+                let errorOutput = String(data: errorData, encoding: .utf8) ?? ""
+                
+                let result = ProcessResult(
+                    output: output,
+                    errorOutput: errorOutput,
+                    exitCode: Int(process.terminationStatus)
+                )
+                
+                continuation.resume(returning: result)
+            }
+            
+            do {
+                try process.run()
+            } catch {
+                continuation.resume(throwing: error)
+            }
+        }
     }
 }
 
 // MARK: - Supporting Types
 
-public enum ServerState: Sendable {
-    case idle
-    case running(Transport)
-    case stopping
-    case stopped
+public struct ServerConfiguration {
+    public let logger: Logger
+    public let maxResourceUtilization: Int
+    public let developmentMode: Bool
     
-    public enum Transport: Sendable {
-        case stdio
-        case tcp(Int)
-    }
-    
-    var isRunning: Bool {
-        if case .running = self { return true }
-        return false
-    }
-}
-
-public struct ServerConfiguration: Sendable {
-    let maxResourceUtilization: Int
-    let developmentMode: Bool
-    let maximumSecurity: Bool
-    let hardwareSpec: HardwareSpec
-    let logger: Logger
-}
-
-public struct HardwareSpec: Sendable {
-    let totalMemoryGB: Int
-    let cpuCores: Int
-    let isAppleSilicon: Bool
-    let isM2Max: Bool
-    let recommendedSimulators: Int
-    
-    var description: String {
-        let chipType = isM2Max ? "M2 Max" : (isAppleSilicon ? "Apple Silicon" : "Intel")
-        return "\(chipType), \(totalMemoryGB)GB RAM, \(cpuCores) cores"
+    public init(
+        logger: Logger,
+        maxResourceUtilization: Int = 80,
+        developmentMode: Bool = true
+    ) {
+        self.logger = logger
+        self.maxResourceUtilization = maxResourceUtilization
+        self.developmentMode = developmentMode
     }
 }
