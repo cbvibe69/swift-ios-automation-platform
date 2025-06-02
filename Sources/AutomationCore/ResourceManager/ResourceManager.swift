@@ -75,10 +75,35 @@ public actor ResourceManager {
         return max(1, optimal)
     }
 
+    /// Get current resource state for build intelligence optimization
+    public func getCurrentResourceState() async -> ResourceState {
+        let usage = await monitor.getCurrentUsage()
+        let totalMemoryBytes = Double(hardwareSpec.totalMemoryGB) * 1024 * 1024 * 1024
+        let availableMemoryBytes = totalMemoryBytes - Double(usage.memoryUsedBytes)
+        let availableMemoryGB = availableMemoryBytes / (1024 * 1024 * 1024)
+        
+        return ResourceState(
+            cpuCoreCount: hardwareSpec.cpuCores,
+            availableMemoryGB: availableMemoryGB
+        )
+    }
+
     /// Placeholder for resource optimization functionality.
     public func optimizeResourceAllocation() async {
         logger.debug("optimizeResourceAllocation invoked")
         let usage = await monitor.getCurrentUsage()
         logger.trace("CPU usage: \(usage.cpuUsage), mem used: \(usage.memoryUsedBytes)")
+    }
+}
+
+// MARK: - Supporting Types for Build Intelligence
+
+public struct ResourceState: Sendable {
+    public let cpuCoreCount: Int
+    public let availableMemoryGB: Double
+    
+    public init(cpuCoreCount: Int, availableMemoryGB: Double) {
+        self.cpuCoreCount = cpuCoreCount
+        self.availableMemoryGB = availableMemoryGB
     }
 }

@@ -21,6 +21,11 @@ public actor MCPToolRegistry {
         return Array(tools.values.map(\.definition))
     }
     
+    /// Get all registered tools with their handlers (for documentation generation)
+    public func getRegisteredTools() async -> [RegisteredTool] {
+        return Array(tools.values)
+    }
+    
     /// Execute a tool by name with given arguments
     public func executeTool(name: String, arguments: [String: AnyCodable]) async throws -> MCPToolResult {
         guard let registeredTool = tools[name] else {
@@ -98,15 +103,19 @@ public struct MCPToolBuilder {
             "action": MCPPropertySchema(
                 type: "string",
                 description: "Action to perform",
-                enum: ["list", "boot", "shutdown", "install", "launch", "screenshot"]
+                enum: ["list", "boot", "shutdown", "matrix", "status", "install", "launch", "screenshot"]
             ),
             "deviceId": MCPPropertySchema(
                 type: "string",
-                description: "Simulator device ID (optional for list action)"
+                description: "Simulator device ID (optional for list/matrix/status actions)"
             ),
             "appPath": MCPPropertySchema(
                 type: "string",
-                description: "Path to app bundle for install/launch actions"
+                description: "Path to app bundle for install action"
+            ),
+            "bundleId": MCPPropertySchema(
+                type: "string",
+                description: "App bundle ID for launch action"
             )
         ]
         
@@ -117,7 +126,7 @@ public struct MCPToolBuilder {
         
         return MCPTool(
             name: "simulator_control",
-            description: "Control iOS simulators: list, boot, shutdown, install apps, take screenshots",
+            description: "Advanced iOS simulator management: list devices with resource status, boot/shutdown with optimization, create testing matrices, install/launch apps, health monitoring",
             inputSchema: schema
         )
     }
@@ -246,6 +255,10 @@ public struct MCPToolBuilder {
                 description: "Log level filter",
                 enum: ["debug", "info", "notice", "error", "fault"],
                 default: AnyCodable("info")
+            ),
+            "bundleId": MCPPropertySchema(
+                type: "string",
+                description: "App bundle ID to filter logs"
             )
         ]
         
@@ -256,7 +269,121 @@ public struct MCPToolBuilder {
         
         return MCPTool(
             name: "log_monitor",
-            description: "Monitor and analyze iOS simulator and device logs in real-time",
+            description: "Monitor device and simulator logs with intelligent filtering",
+            inputSchema: schema
+        )
+    }
+    
+    /// Build a tool for visual documentation generation
+    public static func visualDocumentationTool() -> MCPTool {
+        let properties: [String: MCPPropertySchema] = [
+            "action": MCPPropertySchema(
+                type: "string",
+                description: "Documentation generation action",
+                enum: ["generate", "live_tools", "api_only", "architecture_only"]
+            ),
+            "projectPath": MCPPropertySchema(
+                type: "string",
+                description: "Path to the project for documentation generation",
+                default: AnyCodable(".")
+            ),
+            "outputPath": MCPPropertySchema(
+                type: "string",
+                description: "Output directory for generated documentation",
+                default: AnyCodable("Documentation/Generated")
+            )
+        ]
+        
+        let schema = MCPToolInputSchema(
+            properties: properties,
+            required: ["action"]
+        )
+        
+        return MCPTool(
+            name: "visual_documentation",
+            description: "Generate comprehensive visual documentation including API docs, architecture diagrams, and MCP tool references",
+            inputSchema: schema
+        )
+    }
+    
+    /// Build a tool for Build Intelligence operations
+    public static func buildIntelligenceTool() -> MCPTool {
+        let properties: [String: MCPPropertySchema] = [
+            "action": MCPPropertySchema(
+                type: "string",
+                description: "Build Intelligence action",
+                enum: ["analyze", "stats", "predict", "cache_status", "optimize"]
+            ),
+            "projectPath": MCPPropertySchema(
+                type: "string",
+                description: "Path to the Xcode project"
+            ),
+            "changedFiles": MCPPropertySchema(
+                type: "integer",
+                description: "Number of changed files for prediction",
+                default: AnyCodable(0)
+            ),
+            "targets": MCPPropertySchema(
+                type: "array",
+                description: "Build targets for prediction",
+                default: AnyCodable(["Main"])
+            ),
+            "cacheHitRate": MCPPropertySchema(
+                type: "number",
+                description: "Expected cache hit rate (0.0-1.0) for prediction",
+                default: AnyCodable(0.5)
+            )
+        ]
+        
+        let schema = MCPToolInputSchema(
+            properties: properties,
+            required: ["action"]
+        )
+        
+        return MCPTool(
+            name: "build_intelligence",
+            description: "Advanced Build Intelligence: analyze build requirements, predict build times, view cache statistics, and get optimization recommendations",
+            inputSchema: schema
+        )
+    }
+    
+    /// Build a tool for enhanced build with intelligence
+    public static func enhancedBuildTool() -> MCPTool {
+        let properties: [String: MCPPropertySchema] = [
+            "projectPath": MCPPropertySchema(
+                type: "string",
+                description: "Path to the Xcode project or workspace"
+            ),
+            "scheme": MCPPropertySchema(
+                type: "string",
+                description: "Build scheme to use"
+            ),
+            "destination": MCPPropertySchema(
+                type: "string",
+                description: "Build destination (e.g., 'platform=iOS Simulator,name=iPhone 15')",
+                default: AnyCodable("platform=iOS Simulator,name=iPhone 15")
+            ),
+            "configuration": MCPPropertySchema(
+                type: "string",
+                description: "Build configuration",
+                enum: ["Debug", "Release"],
+                default: AnyCodable("Debug")
+            ),
+            "forceRebuild": MCPPropertySchema(
+                type: "boolean",
+                description: "Force rebuild regardless of intelligence analysis",
+                default: AnyCodable(false)
+            )
+        ]
+        
+        let schema = MCPToolInputSchema(
+            properties: properties,
+            required: ["projectPath", "scheme"]
+        )
+        
+        return MCPTool(
+            name: "enhanced_build",
+            description: "Enhanced Xcode build with Build Intelligence: smart rebuild analysis, cache optimization, time prediction, and performance tracking",
             inputSchema: schema
         )
     }

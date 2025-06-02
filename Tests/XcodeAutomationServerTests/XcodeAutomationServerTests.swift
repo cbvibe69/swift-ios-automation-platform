@@ -11,45 +11,34 @@ final class XcodeAutomationServerTests: XCTestCase {
         // Verify basic properties
         XCTAssertGreaterThan(hardwareSpec.totalMemoryGB, 0)
         XCTAssertGreaterThan(hardwareSpec.cpuCores, 0)
-        XCTAssertGreaterThan(hardwareSpec.recommendedSimulators, 0)
         
-        print("Detected hardware: \(hardwareSpec.description)")
+        print("Detected hardware: \(hardwareSpec.cpuCores) cores, \(hardwareSpec.totalMemoryGB)GB RAM, \(hardwareSpec.architecture)")
     }
     
     func testServerConfiguration() throws {
         // Test server configuration creation
         let logger = Logger(label: "test")
-        let hardwareSpec = HardwareSpec(
-            totalMemoryGB: 32,
-            cpuCores: 12,
-            isAppleSilicon: true,
-            isM2Max: true,
-            recommendedSimulators: 8
-        )
         
         let config = ServerConfiguration(
+            logger: logger,
             maxResourceUtilization: 85,
-            developmentMode: true,
-            maximumSecurity: true,
-            hardwareSpec: hardwareSpec,
-            logger: logger
+            developmentMode: true
         )
         
         XCTAssertEqual(config.maxResourceUtilization, 85)
         XCTAssertTrue(config.developmentMode)
-        XCTAssertTrue(config.maximumSecurity)
-        XCTAssertTrue(config.hardwareSpec.isM2Max)
     }
     
-    func testSimulatorCalculation() {
+    func testSimulatorCalculation() async throws {
         // Test optimal simulator count calculation
-        let count = calculateOptimalSimulatorCount(memoryGB: 32, cores: 12)
+        let hardwareSpec = try await detectHardwareCapabilities()
+        let count = calculateOptimalSimulatorCount(hardwareSpec: hardwareSpec)
         
-        // Should be between 1 and 12 simulators
+        // Should be between 1 and number of cores
         XCTAssertGreaterThan(count, 0)
-        XCTAssertLessThanOrEqual(count, 12)
+        XCTAssertLessThanOrEqual(count, hardwareSpec.cpuCores)
         
-        print("Optimal simulator count for Mac Studio M2 Max: \(count)")
+        print("Optimal simulator count for detected hardware: \(count)")
     }
     
     func testPerformanceBaseline() async throws {

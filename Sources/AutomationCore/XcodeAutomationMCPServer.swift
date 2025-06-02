@@ -14,6 +14,8 @@ public final class XcodeAutomationMCPServer {
     private let toolRegistry: MCPToolRegistry
     private let xcodeBuildWrapper: XcodeBuildWrapper
     private let configuration: ServerConfiguration
+    private let enhancedToolHandlers: EnhancedToolHandlers
+    private let simulatorManager: SimulatorManager
     
     // MARK: - State Management
     private var isRunning = false
@@ -30,10 +32,40 @@ public final class XcodeAutomationMCPServer {
         self.protocolHandler = MCPProtocolHandler(logger: logger, toolRegistry: toolRegistry)
         self.xcodeBuildWrapper = XcodeBuildWrapper(logger: logger)
         
+        // Initialize enhanced components for Phase 2
+        let hardwareSpec = HardwareSpec(
+            cpuCores: HardwareDetection.cpuCoreCount(),
+            totalMemoryGB: Int(HardwareDetection.memorySize() / (1024 * 1024 * 1024)),
+            architecture: HardwareDetection.architecture()
+        )
+        
+        let resourceManager = try await ResourceManager(
+            hardwareSpec: hardwareSpec,
+            maxUtilization: configuration.maxResourceUtilization,
+            logger: logger
+        )
+        let securityManager = SecurityManager()
+        
+        // Initialize Simulator Manager (Task 07 completion)
+        self.simulatorManager = SimulatorManager(
+            logger: logger,
+            resourceManager: resourceManager,
+            maxConcurrentDevices: hardwareSpec.cpuCores > 8 ? 8 : 6
+        )
+        
+        self.enhancedToolHandlers = EnhancedToolHandlers(
+            logger: logger,
+            xcodeBuildWrapper: xcodeBuildWrapper,
+            resourceManager: resourceManager,
+            securityManager: securityManager
+        )
+        
         // Register all MCP tools
         try await registerTools()
         
-        logger.info("✅ MCP Server initialized successfully")
+        logger.info("✅ Swift iOS Automation Platform initialized successfully")
+        logger.info("🖥️ Hardware: \(hardwareSpec.cpuCores) cores, \(hardwareSpec.totalMemoryGB)GB RAM, \(hardwareSpec.architecture)")
+        logger.info("📱 Max concurrent simulators: \(hardwareSpec.cpuCores > 8 ? 8 : 6)")
     }
     
     // MARK: - Server Lifecycle
@@ -178,6 +210,33 @@ public final class XcodeAutomationMCPServer {
         )
         await toolRegistry.registerTool(logTool)
         
+        // Register visual documentation tool
+        let visualDocTool = RegisteredTool(
+            definition: MCPToolBuilder.visualDocumentationTool(),
+            handler: { [weak self] arguments in
+                try await self?.handleVisualDocumentationTool(arguments: arguments) ?? MCPToolResult.error("Server unavailable")
+            }
+        )
+        await toolRegistry.registerTool(visualDocTool)
+        
+        // Register Build Intelligence tool
+        let buildIntelligenceTool = RegisteredTool(
+            definition: MCPToolBuilder.buildIntelligenceTool(),
+            handler: { [weak self] arguments in
+                try await self?.handleBuildIntelligenceTool(arguments: arguments) ?? MCPToolResult.error("Server unavailable")
+            }
+        )
+        await toolRegistry.registerTool(buildIntelligenceTool)
+        
+        // Register Enhanced Build tool
+        let enhancedBuildTool = RegisteredTool(
+            definition: MCPToolBuilder.enhancedBuildTool(),
+            handler: { [weak self] arguments in
+                try await self?.handleEnhancedBuildTool(arguments: arguments) ?? MCPToolResult.error("Server unavailable")
+            }
+        )
+        await toolRegistry.registerTool(enhancedBuildTool)
+        
         logger.info("✅ All MCP tools registered successfully")
     }
     
@@ -235,13 +294,40 @@ public final class XcodeAutomationMCPServer {
         
         switch action {
         case "list":
-            return try await listSimulators()
+            return try await listSimulatorsEnhanced()
         case "boot":
             guard let deviceIdValue = arguments["deviceId"],
                   let deviceId = deviceIdValue.value as? String else {
                 throw MCPError.invalidParams
             }
-            return try await bootSimulator(deviceId: deviceId)
+            return try await bootSimulatorEnhanced(deviceId: deviceId)
+        case "shutdown":
+            if let deviceIdValue = arguments["deviceId"],
+               let deviceId = deviceIdValue.value as? String {
+                return try await shutdownSimulatorEnhanced(deviceId: deviceId)
+            } else {
+                return try await shutdownAllSimulators()
+            }
+        case "matrix":
+            return try await createTestingMatrix()
+        case "status":
+            return try await getSimulatorStatus()
+        case "install":
+            guard let deviceIdValue = arguments["deviceId"],
+                  let deviceId = deviceIdValue.value as? String,
+                  let appPathValue = arguments["appPath"],
+                  let appPath = appPathValue.value as? String else {
+                throw MCPError.invalidParams
+            }
+            return try await installAppOnSimulator(deviceId: deviceId, appPath: appPath)
+        case "launch":
+            guard let deviceIdValue = arguments["deviceId"],
+                  let deviceId = deviceIdValue.value as? String,
+                  let bundleIdValue = arguments["bundleId"],
+                  let bundleId = bundleIdValue.value as? String else {
+                throw MCPError.invalidParams
+            }
+            return try await launchAppOnSimulator(deviceId: deviceId, bundleId: bundleId)
         case "screenshot":
             let deviceId = (arguments["deviceId"]?.value as? String) ?? "booted"
             return try await takeSimulatorScreenshot(deviceId: deviceId)
@@ -342,27 +428,219 @@ public final class XcodeAutomationMCPServer {
         return MCPToolResult.text("Log monitoring not yet implemented for action: \(action)")
     }
     
-    // MARK: - Implementation Helpers
+    private func handleVisualDocumentationTool(arguments: [String: AnyCodable]) async throws -> MCPToolResult {
+        // Delegate to the enhanced tool handlers for visual documentation
+        return try await enhancedToolHandlers.handleVisualDocumentation(arguments: arguments)
+    }
     
-    private func listSimulators() async throws -> MCPToolResult {
+    private func handleBuildIntelligenceTool(arguments: [String: AnyCodable]) async throws -> MCPToolResult {
+        // Delegate to the enhanced tool handlers for Build Intelligence
+        return try await enhancedToolHandlers.handleBuildIntelligence(arguments: arguments)
+    }
+    
+    private func handleEnhancedBuildTool(arguments: [String: AnyCodable]) async throws -> MCPToolResult {
+        // Delegate to the enhanced tool handlers for Enhanced Build
+        return try await enhancedToolHandlers.handleEnhancedBuild(arguments: arguments)
+    }
+    
+    // MARK: - Enhanced Simulator Operations (Task 07)
+    
+    private func listSimulatorsEnhanced() async throws -> MCPToolResult {
         let command = ["xcrun", "simctl", "list", "devices", "--json"]
         let result = try await executeCommand(command)
         
-        if result.exitCode == 0 {
-            return MCPToolResult.text("📱 Simulators:\n\(result.output)")
-        } else {
+        guard result.exitCode == 0 else {
             return MCPToolResult.error("Failed to list simulators: \(result.errorOutput)")
+        }
+        
+        // Parse and enhance simulator information
+        guard let data = result.output.data(using: .utf8),
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let devices = json["devices"] as? [String: Any] else {
+            return MCPToolResult.text("📱 Raw simulators:\n\(result.output)")
+        }
+        
+        var enhancedOutput = "📱 Enhanced Simulator List:\n\n"
+        
+        // Get resource status for recommendations
+        let resourceStatus = await simulatorManager.getResourceStatus()
+        
+        enhancedOutput += "🖥️ System Status:\n"
+        enhancedOutput += "  • Current Active: \(resourceStatus.currentActiveDevices)\n"
+        enhancedOutput += "  • Max Optimal: \(resourceStatus.maxOptimalDevices)\n"
+        enhancedOutput += "  • Available Slots: \(resourceStatus.availableSlots)\n"
+        enhancedOutput += "  • Memory Pressure: \(resourceStatus.memoryPressure ? "⚠️ HIGH" : "✅ Normal")\n\n"
+        
+        for (runtime, deviceList) in devices {
+            if let devices = deviceList as? [[String: Any]], !devices.isEmpty {
+                enhancedOutput += "🍎 \(runtime):\n"
+                
+                for device in devices {
+                    if let name = device["name"] as? String,
+                       let udid = device["udid"] as? String,
+                       let state = device["state"] as? String {
+                        
+                        let stateEmoji = state == "Booted" ? "🟢" : (state == "Shutdown" ? "🔴" : "🟡")
+                        enhancedOutput += "  \(stateEmoji) \(name)\n"
+                        enhancedOutput += "    📱 UDID: \(udid)\n"
+                        enhancedOutput += "    📊 State: \(state)\n\n"
+                    }
+                }
+            }
+        }
+        
+        enhancedOutput += "💡 Recommendations:\n"
+        for recommendation in resourceStatus.recommendations {
+            enhancedOutput += "  • \(recommendation)\n"
+        }
+        
+        return MCPToolResult.text(enhancedOutput)
+    }
+    
+    private func bootSimulatorEnhanced(deviceId: String) async throws -> MCPToolResult {
+        logger.info("🚀 Booting simulator with resource management: \(deviceId)")
+        
+        do {
+            let results = try await simulatorManager.bootDevices([deviceId])
+            let result = results.first!
+            
+            var message = "✅ Simulator booted successfully"
+            if result.wasAlreadyBooted {
+                message += " (was already booted)"
+            } else {
+                message += " in \(String(format: "%.2f", result.bootTime))s"
+            }
+            
+            // Add resource info
+            let resourceStatus = await simulatorManager.getResourceStatus()
+            message += "\n📊 System can handle \(resourceStatus.availableSlots) more simulators"
+            message += "\n🖥️ Current active devices: \(resourceStatus.currentActiveDevices)"
+            
+            return MCPToolResult.text(message)
+            
+        } catch {
+            return MCPToolResult.error("Failed to boot simulator: \(error.localizedDescription)")
         }
     }
     
-    private func bootSimulator(deviceId: String) async throws -> MCPToolResult {
-        let command = ["xcrun", "simctl", "boot", deviceId]
-        let result = try await executeCommand(command)
+    private func shutdownSimulatorEnhanced(deviceId: String) async throws -> MCPToolResult {
+        logger.info("🛑 Shutting down simulator: \(deviceId)")
         
-        if result.exitCode == 0 {
-            return MCPToolResult.text("✅ Simulator \(deviceId) booted successfully")
-        } else {
-            return MCPToolResult.error("Failed to boot simulator: \(result.errorOutput)")
+        do {
+            try await simulatorManager.shutdownDevices([deviceId])
+            
+            let resourceStatus = await simulatorManager.getResourceStatus()
+            let message = "✅ Simulator shutdown successfully\n📊 Available slots: \(resourceStatus.availableSlots)"
+            
+            return MCPToolResult.text(message)
+            
+        } catch {
+            return MCPToolResult.error("Failed to shutdown simulator: \(error.localizedDescription)")
+        }
+    }
+    
+    private func shutdownAllSimulators() async throws -> MCPToolResult {
+        logger.info("🛑 Shutting down all managed simulators")
+        
+        do {
+            try await simulatorManager.shutdownAll()
+            return MCPToolResult.text("✅ All simulators shutdown and cleaned up")
+            
+        } catch {
+            return MCPToolResult.error("Failed to shutdown simulators: \(error.localizedDescription)")
+        }
+    }
+    
+    private func createTestingMatrix() async throws -> MCPToolResult {
+        logger.info("🎯 Creating optimal testing matrix")
+        
+        do {
+            let matrix = try await simulatorManager.createTestingMatrix()
+            
+            var message = "🎯 Optimal Testing Matrix:\n\n"
+            message += "🖥️ Selected Devices (\(matrix.selectedDevices.count)):\n"
+            
+            for device in matrix.selectedDevices {
+                let stateEmoji = device.state == "Booted" ? "🟢" : "🔴"
+                message += "  \(stateEmoji) \(device.name)\n"
+                message += "    📱 UDID: \(device.udid)\n"
+            }
+            
+            message += "\n📊 Performance:\n"
+            message += "  • Optimal Concurrency: \(matrix.optimalConcurrency)\n"
+            message += "  • Estimated Test Time: \(String(format: "%.1f", matrix.estimatedTestTime))s\n"
+            message += "  • Device Types: \(matrix.deviceTypes.count) unique types\n"
+            
+            return MCPToolResult.text(message)
+            
+        } catch {
+            return MCPToolResult.error("Failed to create testing matrix: \(error.localizedDescription)")
+        }
+    }
+    
+    private func getSimulatorStatus() async throws -> MCPToolResult {
+        let resourceStatus = await simulatorManager.getResourceStatus()
+        let managedDevices = await simulatorManager.getManagedDeviceStatus()
+        
+        var message = "📊 Simulator Manager Status:\n\n"
+        
+        message += "🖥️ Resource Status:\n"
+        message += "  • Current Active: \(resourceStatus.currentActiveDevices)\n"
+        message += "  • Max Optimal: \(resourceStatus.maxOptimalDevices)\n"
+        message += "  • Available Slots: \(resourceStatus.availableSlots)\n"
+        message += "  • Memory Pressure: \(resourceStatus.memoryPressure ? "⚠️ HIGH" : "✅ Normal")\n\n"
+        
+        if !managedDevices.isEmpty {
+            message += "📱 Managed Devices (\(managedDevices.count)):\n"
+            
+            for (deviceId, device) in managedDevices {
+                let stateEmoji = device.state == .booted ? "🟢" : (device.state == .booting ? "🟡" : "🔴")
+                message += "  \(stateEmoji) \(deviceId.prefix(8))...\n"
+                message += "    State: \(device.state)\n"
+                message += "    Boot Time: \(device.bootTime.formatted(date: .omitted, time: .shortened))\n"
+                message += "    Last Check: \(device.lastHealthCheck.formatted(date: .omitted, time: .shortened))\n\n"
+            }
+        }
+        
+        message += "💡 Recommendations:\n"
+        for recommendation in resourceStatus.recommendations {
+            message += "  • \(recommendation)\n"
+        }
+        
+        return MCPToolResult.text(message)
+    }
+    
+    private func installAppOnSimulator(deviceId: String, appPath: String) async throws -> MCPToolResult {
+        logger.info("📲 Installing app on simulator: \(deviceId)")
+        
+        do {
+            let results = try await simulatorManager.installAppOnDevices(appPath: appPath, deviceIds: [deviceId])
+            
+            if results[deviceId] == true {
+                return MCPToolResult.text("✅ App installed successfully on simulator")
+            } else {
+                return MCPToolResult.error("Failed to install app on simulator")
+            }
+            
+        } catch {
+            return MCPToolResult.error("Failed to install app: \(error.localizedDescription)")
+        }
+    }
+    
+    private func launchAppOnSimulator(deviceId: String, bundleId: String) async throws -> MCPToolResult {
+        logger.info("🚀 Launching app on simulator: \(bundleId)")
+        
+        do {
+            let results = try await simulatorManager.launchAppOnDevices(bundleId: bundleId, deviceIds: [deviceId])
+            
+            if let pid = results[deviceId], pid > 0 {
+                return MCPToolResult.text("✅ App launched successfully with PID: \(pid)")
+            } else {
+                return MCPToolResult.error("Failed to launch app on simulator")
+            }
+            
+        } catch {
+            return MCPToolResult.error("Failed to launch app: \(error.localizedDescription)")
         }
     }
     
