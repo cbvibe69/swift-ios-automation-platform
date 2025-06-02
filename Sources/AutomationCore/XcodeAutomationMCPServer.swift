@@ -324,10 +324,38 @@ public final class XcodeAutomationMCPServer: Sendable {
     }
     
     private func handleMCPMessages(transport: any MCPTransport) async throws {
-        // TODO: Handle incoming MCP messages and dispatch to tools. This is
-        // left unimplemented so the server can compile without runtime
-        // crashes during early experimentation.
-        throw MCPError.unimplemented
+        // Minimal MCP message loop implementation. Incoming requests are
+        // expected as JSON lines either via stdio or TCP transport. Each line
+        // represents a `SimpleBuildRequest` which is executed using
+        // `xcodebuild` and the result is returned as JSON.
+
+        let handler = SimpleMCPHandler(logger: logger)
+        let decoder = JSONDecoder()
+        let encoder = JSONEncoder()
+
+        while await serverState.value.isRunning {
+            guard let line = readLine(strippingNewline: true), !line.isEmpty else {
+                continue
+            }
+
+            do {
+                let request = try decoder.decode(SimpleBuildRequest.self,
+                                                 from: Data(line.utf8))
+                let response = try await handler.handleBuildRequest(request)
+                let data = try encoder.encode(response)
+                FileHandle.standardOutput.write(data)
+                FileHandle.standardOutput.write(Data([0x0A]))
+            } catch {
+                logger.error("Failed to handle request: \(error.localizedDescription)")
+                let errorResponse = SimpleBuildResponse(success: false,
+                                                        stdout: "",
+                                                        stderr: error.localizedDescription)
+                if let data = try? encoder.encode(errorResponse) {
+                    FileHandle.standardOutput.write(data)
+                    FileHandle.standardOutput.write(Data([0x0A]))
+                }
+            }
+        }
     }
     
     private func monitorActiveProjects() async {
