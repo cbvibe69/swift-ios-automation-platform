@@ -91,7 +91,7 @@ let package = Package(
 // Enable build optimizations for release builds
 #if swift(>=5.9)
 package.targets.forEach { target in
-    if target.type == .executable || target.type == .library {
+    if target.type == .executable {
         target.swiftSettings = (target.swiftSettings ?? []) + [
             .unsafeFlags([
                 "-O",
