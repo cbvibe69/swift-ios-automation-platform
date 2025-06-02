@@ -308,7 +308,8 @@ public final class XcodeAutomationMCPServer: Sendable {
     ) async throws -> RawBuildResult {
         // Implementation of makefile-based build execution
         // This would use Swift Subprocess for optimal performance
-        fatalError("Implementation needed")
+        // TODO: Implement makefile-based build execution using Swift Subprocess
+        throw MCPError.unimplemented
     }
     
     private func executeFileOperation(
@@ -317,27 +318,33 @@ public final class XcodeAutomationMCPServer: Sendable {
         bookmarks: [SecurityBookmark]
     ) async throws -> FileOperationResult {
         // Implementation of secure file operations
-        fatalError("Implementation needed")
+        // TODO: Implement secure file operations with sandbox integration
+        throw MCPError.unimplemented
     }
     
     private func handleMCPMessages(transport: any MCPTransport) async throws {
         // Implementation of MCP message handling loop
-        fatalError("Implementation needed")
+        // TODO: Implement MCP message handling loop
+        throw MCPError.unimplemented
     }
     
     private func monitorActiveProjects() async {
         // Implementation of project monitoring
-        fatalError("Implementation needed")
+        // TODO: Implement real project monitoring logic
+        //       e.g. watch file changes and trigger build intelligence
+        return
     }
     
     private func monitorSystemResources() async {
         // Implementation of resource monitoring
-        fatalError("Implementation needed")
+        // TODO: Implement resource monitoring for CPU and memory usage
+        return
     }
     
     private func monitorSecurityEvents() async {
         // Implementation of security monitoring
-        fatalError("Implementation needed")
+        // TODO: Implement security event monitoring for Sandbox violations
+        return
     }
 }
 
@@ -379,4 +386,10 @@ public struct HardwareSpec: Sendable {
         let chipType = isM2Max ? "M2 Max" : (isAppleSilicon ? "Apple Silicon" : "Intel")
         return "\(chipType), \(totalMemoryGB)GB RAM, \(cpuCores) cores"
     }
+}
+
+/// Errors that can occur while running the MCP server.
+public enum MCPError: Error, Sendable {
+    /// Functionality is not yet implemented.
+    case unimplemented
 }
