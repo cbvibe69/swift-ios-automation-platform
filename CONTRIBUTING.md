@@ -289,7 +289,7 @@ Use the feature request template and include:
 - [Implementation Guide](Documentation/IMPLEMENTATION_GUIDE.md) - Development roadmap
 - [Architecture Overview](Documentation/ARCHITECTURE.md) - System design
 - [Performance Targets](Documentation/PERFORMANCE.md) - Benchmarks
-- [Security Model](Documentation/SECURITY.md) - App Sandbox guide
+- [Security Policy](SECURITY.md) - Sandbox approach and reporting
 
 ### External References
 - [Model Context Protocol](https://github.com/modelcontextprotocol) - Official MCP spec

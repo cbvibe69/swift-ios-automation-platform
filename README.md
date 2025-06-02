@@ -131,7 +131,7 @@ echo '{"jsonrpc": "2.0", "method": "tools/list", "id": 1}' | swift run XcodeAuto
 | [Implementation Guide](Documentation/IMPLEMENTATION_GUIDE.md) | Step-by-step development roadmap |
 | [Architecture Overview](Documentation/ARCHITECTURE.md) | Detailed system design |
 | [Performance Targets](Documentation/PERFORMANCE.md) | Benchmarks and optimization guides |
-| [Security Model](Documentation/SECURITY.md) | App Sandbox and privacy controls |
+| [Security Policy](SECURITY.md) | Sandbox approach and reporting |
 | [API Reference](Documentation/API.md) | Complete MCP tool documentation |
 
 ## 🛠️ Development
