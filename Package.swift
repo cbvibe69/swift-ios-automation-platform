@@ -24,11 +24,17 @@ let package = Package(
         .package(url: "https://github.com/cocoanetics/SwiftMCP.git", from: "1.0.0"),
         
         // Swift Subprocess for enhanced process management
-        .package(
-            url: "https://github.com/swiftlang/swift-subprocess.git",
-            from: "0.1.0"  // <- keep your required tag or minor version
-        ),
-        
+        // BEFORE
+.package(
+  url: "https://github.com/swiftlang/swift-subprocess.git",
+  from: "0.1.0"
+),
+
+// AFTER  ✅  use a branch until tags appear
+.package(
+  url: "https://github.com/swiftlang/swift-subprocess.git",
+  branch: "main"
+),
         // ArgumentParser for CLI
         .package(url: "https://github.com/apple/swift-argument-parser.git", from: "1.3.0"),
         
