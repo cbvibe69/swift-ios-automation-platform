@@ -276,6 +276,8 @@ Use the bug report template and include:
 - **Expected vs actual behavior**
 - **Performance impact** (if applicable)
 
+For security issues, please see [SECURITY.md](SECURITY.md) for responsible disclosure instructions.
+
 ### Feature Requests
 Use the feature request template and include:
 - **Use case** and user story
