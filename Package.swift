@@ -56,7 +56,10 @@ let package = Package(
                 .enableUpcomingFeature("ConciseMagicFile"),
                 .enableUpcomingFeature("ForwardTrailingClosures"),
                 .enableUpcomingFeature("ImplicitOpenExistentials"),
-                .enableUpcomingFeature("StrictConcurrency")
+                .enableUpcomingFeature("StrictConcurrency"),
+                .define("DEVELOPMENT", .when(configuration: .debug)),
+                .define("RELEASE", .when(configuration: .release)),
+                .unsafeFlags(["-O", "-whole-module-optimization"], .when(configuration: .release))
             ]
         ),
         
@@ -72,7 +75,10 @@ let package = Package(
                 .product(name: "SwiftMCP", package: "SwiftMCP")
             ],
             swiftSettings: [
-                .enableUpcomingFeature("StrictConcurrency")
+                .enableUpcomingFeature("StrictConcurrency"),
+                .define("DEVELOPMENT", .when(configuration: .debug)),
+                .define("RELEASE", .when(configuration: .release)),
+                .unsafeFlags(["-O", "-whole-module-optimization"], .when(configuration: .release))
             ]
         ),
         
@@ -87,17 +93,3 @@ let package = Package(
         )
     ]
 )
-
-// Enable build optimizations for release builds
-#if swift(>=5.9)
-package.targets.forEach { target in
-    if target.type == .executable {
-        target.swiftSettings = (target.swiftSettings ?? []) + [
-            .unsafeFlags([
-                "-O",
-                "-whole-module-optimization"
-            ], .when(configuration: .release))
-        ]
-    }
-}
-#endif
