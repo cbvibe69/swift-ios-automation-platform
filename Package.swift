@@ -33,11 +33,7 @@ let package = Package(
   from: "0.1.0"
 ),
 
-// AFTER  ✅  use a branch until tags appear
-.package(
-  url: "https://github.com/swiftlang/swift-subprocess.git",
-  branch: "main"
-),
+
         // ArgumentParser for CLI
         .package(url: "https://github.com/apple/swift-argument-parser.git", from: "1.3.0"),
         
