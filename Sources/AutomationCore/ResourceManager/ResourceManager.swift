@@ -16,13 +16,13 @@ public actor ResourceManager {
     /// Execute an operation while respecting resource limits.
     public func executeWithResourceControl<T>(_ operation: () async throws -> T) async throws -> T {
         logger.debug("executeWithResourceControl invoked")
-        throw MCPError.unimplemented
+        throw MCPError.resourceExhausted
     }
 
     /// Determine optimal simulator count given requested devices and optional limit.
     public func calculateOptimalSimulatorCount(requestedDevices: [SimulatorDevice], maxConcurrent: Int?) async throws -> Int {
         logger.debug("calculateOptimalSimulatorCount invoked")
-        throw MCPError.unimplemented
+        throw MCPError.resourceExhausted
     }
 
     /// Placeholder for resource optimization loop called by the server.

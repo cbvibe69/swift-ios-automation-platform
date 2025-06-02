@@ -15,19 +15,19 @@ public class SecurityManager {
     /// Validate that a project path is allowed for operations.
     public func validateProjectPath(_ path: String) throws {
         logger.debug("validateProjectPath invoked with \(path)")
-        throw MCPError.unimplemented
+        throw MCPError.invalidProject("Validation not implemented for path \(path)")
     }
 
     /// Variant used by the server for project creation specifically.
     public func validateProjectCreationPath(_ path: String) throws {
         logger.debug("validateProjectCreationPath invoked with \(path)")
-        throw MCPError.unimplemented
+        throw MCPError.invalidProject("Creation path validation not implemented for \(path)")
     }
 
     /// Request access to files with a specified purpose.
     public func requestFileAccess(paths: [String], purpose: AccessPurpose) async throws -> FileAccessResult {
         logger.debug("requestFileAccess invoked for \(paths)")
-        throw MCPError.unimplemented
+        throw MCPError.securityViolation("File access request not implemented")
     }
 }
 

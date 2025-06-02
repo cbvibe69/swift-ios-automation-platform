@@ -309,7 +309,7 @@ public final class XcodeAutomationMCPServer: Sendable {
         // Implementation of makefile-based build execution will use Swift
         // Subprocess for optimal performance. For now this method throws so
         // the server won't crash if it's called during early development.
-        throw MCPError.unimplemented
+        throw MCPError.buildFailed("Makefile-based build execution not implemented")
     }
     
     private func executeFileOperation(
@@ -320,7 +320,7 @@ public final class XcodeAutomationMCPServer: Sendable {
         // TODO: Secure file operations should integrate with the sandbox and
         // manage security-scoped bookmarks. Throwing here prevents a crash
         // until the implementation is provided.
-        throw MCPError.unimplemented
+        throw MCPError.securityViolation("Secure file operation not implemented")
     }
     
     private func handleMCPMessages(transport: any MCPTransport) async throws {
