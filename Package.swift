@@ -21,7 +21,10 @@ let package = Package(
         // .package(url: "https://github.com/modelcontextprotocol/swift-sdk.git", from: "1.0.0"),
         
         // SwiftMCP Framework (Cocoanetics)
-        .package(url: "https://github.com/cocoanetics/SwiftMCP.git", from: "1.0.0"),
+        .package(
+    url: "https://github.com/Cocoanetics/SwiftMCP.git",
+    branch: "main"          // ← use branch until they publish a tag
+),
         
         // Swift Subprocess for enhanced process management
         // BEFORE
