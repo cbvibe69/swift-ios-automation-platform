@@ -18,6 +18,20 @@ The project is automatically configured for AI agents through the `.codex/setup.
 3. **Testing**: Use `./Scripts/test.sh` for comprehensive testing
 4. **Development**: Follow the Phase-based development timeline in the PRD
 
+## Task Workflow
+
+The outstanding work items for Phase 1 are split into separate markdown files
+under `Documentation/Tasks`. Agents should pick up the lowest numbered
+`TaskXX_*.md` file that has not yet been implemented. After completing the
+implementation for that task:
+
+1. Run `./Scripts/build.sh` and `./Scripts/test.sh` to validate the changes.
+2. Commit the results with a concise message referencing the task.
+3. Proceed to the next numbered task file and repeat the process.
+
+This ensures tasks are handled sequentially with build and test verification
+between each step.
+
 ## Project Structure
 
 - `Sources/AutomationCore/` - Core automation framework
