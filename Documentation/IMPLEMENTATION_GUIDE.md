@@ -12,8 +12,8 @@ git clone https://github.com/cbvibe69/swift-ios-automation-platform.git
 cd swift-ios-automation-platform
 
 # 2. Verify prerequisites
-xcodebuild -version  # Should be 15.0+
-swift --version      # Should be 5.9+
+xcodebuild -version  # Should be 16.5+
+swift --version      # Should be 6.0+
 system_profiler SPHardwareDataType | grep -E "Total Number of Cores|Memory"
 ```
 
