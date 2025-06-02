@@ -306,9 +306,10 @@ public final class XcodeAutomationMCPServer: Sendable {
         makefile: String,
         destination: String
     ) async throws -> RawBuildResult {
-        // Implementation of makefile-based build execution
-        // This would use Swift Subprocess for optimal performance
-        fatalError("Implementation needed")
+        // Implementation of makefile-based build execution will use Swift
+        // Subprocess for optimal performance. For now this method throws so
+        // the server won't crash if it's called during early development.
+        throw MCPError.unimplemented
     }
     
     private func executeFileOperation(
@@ -316,28 +317,38 @@ public final class XcodeAutomationMCPServer: Sendable {
         permittedPaths: [String],
         bookmarks: [SecurityBookmark]
     ) async throws -> FileOperationResult {
-        // Implementation of secure file operations
-        fatalError("Implementation needed")
+        // TODO: Secure file operations should integrate with the sandbox and
+        // manage security-scoped bookmarks. Throwing here prevents a crash
+        // until the implementation is provided.
+        throw MCPError.unimplemented
     }
     
     private func handleMCPMessages(transport: any MCPTransport) async throws {
-        // Implementation of MCP message handling loop
-        fatalError("Implementation needed")
+        // TODO: Handle incoming MCP messages and dispatch to tools. This is
+        // left unimplemented so the server can compile without runtime
+        // crashes during early experimentation.
+        throw MCPError.unimplemented
     }
     
     private func monitorActiveProjects() async {
-        // Implementation of project monitoring
-        fatalError("Implementation needed")
+        // TODO: Monitor active projects for changes and trigger analysis. The
+        // functionality is not implemented yet.
+        logger.warning("monitorActiveProjects is unimplemented")
+        return
     }
     
     private func monitorSystemResources() async {
-        // Implementation of resource monitoring
-        fatalError("Implementation needed")
+        // TODO: Periodically gather system resource metrics. Currently a
+        // placeholder so the server does not crash when invoked.
+        logger.warning("monitorSystemResources is unimplemented")
+        return
     }
     
     private func monitorSecurityEvents() async {
-        // Implementation of security monitoring
-        fatalError("Implementation needed")
+        // TODO: Observe security related events and audit access. This is a
+        // stub to avoid crashes during early server runs.
+        logger.warning("monitorSecurityEvents is unimplemented")
+        return
     }
 }
 
