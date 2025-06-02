@@ -29,8 +29,8 @@ let package = Package(
         // Swift Subprocess for enhanced process management
         // BEFORE
 .package(
-  url: "https://github.com/swiftlang/swift-subprocess.git",
-  from: "0.1.0"
+    url: "https://github.com/swiftlang/swift-subprocess.git",
+    branch: "main"
 ),
 
 
