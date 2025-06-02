@@ -98,10 +98,10 @@ chmod +x Scripts/setup.sh
 ./Scripts/setup.sh
 
 # 3. Build the project
-swift build -c release
+./Scripts/build.sh
 
 # 4. Run the automation server
-swift run XcodeAutomationServer --log-level debug --max-resource-utilization 85
+./Scripts/run.sh --log-level debug --max-resource-utilization 85
 ```
 
 ### First Automation
