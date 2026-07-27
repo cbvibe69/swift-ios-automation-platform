@@ -1,9 +1,15 @@
 # Swift iOS Development Automation Platform
 
+> ### Status: inactive — archived
+>
+> This was built to close the 90-second Xcode build-feedback loop before coding agents could do it on their own. **They caught up.** The workflow this server existed to solve is now handled directly by agent tooling, so there was no reason to keep developing it.
+>
+> Left public as a technical reference — Swift 6 strict concurrency, an MCP server implementation in Swift rather than Node, and multi-simulator orchestration. Not maintained; issues and pull requests aren't monitored. Fork it freely.
+
 [![Swift](https://img.shields.io/badge/Swift-6.0+-orange.svg)](https://swift.org)
 [![Platform](https://img.shields.io/badge/Platform-macOS%2014+-blue.svg)](https://developer.apple.com/macos/)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![Build Status](https://img.shields.io/badge/Build-Passing-brightgreen.svg)](#)
+[![Status](https://img.shields.io/badge/Status-Inactive-lightgrey.svg)](#)
 
 > **High-performance Swift-based MCP server for Xcode automation with hybrid architecture**
 
